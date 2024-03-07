@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<head>
+	<style>
+		.element {
+			max-width: 45vw;
+			width: 45vw;
+			height: 50vh;
+		}
+	</style>
+</head>
+<body>
+	Copy and paste from Excel into the first box.  Then click anywhere and copy from the second box into <a href="https://yohasebe.com/rsyntaxtree">here</a>.  
+	Surround an item in equals signs (e.g. "=N=") for an over bar.  <br>
+	Use "\0" for "∅".  <br>
+	Use "|" (vertical pipe) to extend a node down.  <br>
+	Use merged cells in Excel to indicate where a phrase is.  
+	<table><tr>
+		<td><textarea id="input" class="element" onchange="parse();"></textarea></td>
+		<td><textarea id="output" class="element"></textarea></td>
+	</tr></table>
+	<script>
+		function parse() {
+			let input = document.getElementById("input").value.replace(/\\0/g,"∅");
+			let rows = input.split("\n");
+			
+			let table = [];
+			for (let row of rows)
+				table.push(row.split("\t"));
+
+			for (let i = 0; i < table.length; i++) {
+				let pastFirst = false;
+				for (let j = 0; j < table[i].length; j++) {
+					if (table[i][j]) {
+						pastFirst = true;
+						continue;
+					}
+					if (pastFirst)
+						if(!table[i-1] || table[i-1][j] === "-") {
+							table[i][j] = "-";
+						}
+				}
+			}
+
+			console.log(table);
+
+			for (let i = table.length-1; i >= 0; i--) {
+				for (let j = 0; j < table[i].length; j++)
+					if (table[i][j] === "|") {
+						table[i][j] = table[i+1][j];
+						table[i+1][j] = "";
+					}
+			}
+
+			document.getElementById("output").innerHTML = `[${parseRec(0,0 , table)}]`.replace(/\[\] ?/g,"");
+		}
+
+		function parseRec(row,col , table) {
+			if (!table[row]) return "";
+			if (!table[row][col]) return "";
+
+			let parsed = `${table[row][col]} `;
+			parsed += `[${parseRec(row+1,col , table)}] `;
+			for (let i = col+1; i < table[row].length && table[row][i] === "-"; i++)
+				if (table[row+1][i] && table[row+1][i] != "-")
+					parsed += `[${parseRec(row+1,i , table)}] `;
+			return parsed;
+		}
+	</script>
+</body>
