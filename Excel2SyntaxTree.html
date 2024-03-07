@@ -2,31 +2,40 @@
 <head>
 	<style>
 		.element {
-			max-width: 45vw;
+			max-width: 150vw;
 			width: 45vw;
 			height: 50vh;
 		}
 	</style>
 </head>
 <body>
-	Copy and paste from Excel into the first box.  Then click anywhere and copy from the second box into <a href="https://yohasebe.com/rsyntaxtree">here</a>.  
-	Surround an item in equals signs (e.g. "=N=") for an over bar.  <br>
+	Copy and paste from Excel into the first box.&nbsp; Then click anywhere and copy from the second box into <a href="http://mshang.ca/syntree/">here</a>.  <br>
+	Put "`" (a backtic) after a letter for an over bar.  <br>
 	Use "\0" for "∅".  <br>
 	Use "|" (vertical pipe) to extend a node down.  <br>
+	Put "^" before a non-terminal for abreviated notation.  <br>
 	Use merged cells in Excel to indicate where a phrase is.  
 	<table><tr>
 		<td><textarea id="input" class="element" onchange="parse();"></textarea></td>
 		<td><textarea id="output" class="element"></textarea></td>
 	</tr></table>
+	<button onclick="parse();">Generate Tree Creation Syntax</button>
 	<script>
 		function parse() {
-			let input = document.getElementById("input").value.replace(/\\0/g,"∅");
-			let rows = input.split("\n");
-			
-			let table = [];
-			for (let row of rows)
-				table.push(row.split("\t"));
+			// Rectify the input for use with mshang's tree creator
+			let input = document.getElementById("input").value
+				.replace(/\\0/g,"∅")
+				.replace(/`/g,"̅");
 
+			// Create the prelininary table
+			let rows = input.split("\n");
+			let table = [];
+			for (let row of rows) {
+				let r = row.split("\t");
+				table.push(r);
+			}
+
+			// Populate the table with hyphens and pipes where appropriate
 			for (let i = 0; i < table.length; i++) {
 				let pastFirst = false;
 				for (let j = 0; j < table[i].length; j++) {
@@ -34,21 +43,29 @@
 						pastFirst = true;
 						continue;
 					}
-					if (pastFirst)
-						if(!table[i-1] || table[i-1][j] === "-") {
-							table[i][j] = "-";
-						}
+
+					if (pastFirst) {
+						if (table[i][j-1] === "|")                table[i][j] = "|";
+						else if (!table[i-1] 
+							|| table[i-1][j] === "-" || table[i-1][j] === "|") table[i][j] = "-";
+					}
 				}
 			}
 
-			console.log(table);
+			console.log(JSON.stringify(table).replace(/"/g,"").replace(/\],\[/g,"]\n[").replace(/,/g,",\t"));
 
-			for (let i = table.length-1; i >= 0; i--) {
-				for (let j = 0; j < table[i].length; j++)
-					if (table[i][j] === "|") {
-						table[i][j] = table[i+1][j];
-						table[i+1][j] = "";
-					}
+			// Move nodes up as indicated by the pipes
+			while (JSON.stringify(table).indexOf("|") > -1) {
+				for (let i = table.length-1; i >= 0; i--) {
+					for (let j = 0; j < table[i].length; j++)
+						if (table[i][j] === "|") {
+							if (table[i+1]) {
+								table[i][j] = table[i+1][j] || "";
+								table[i+1][j] = "|";
+							}
+							else table[i][j] = "";
+						}
+				}
 			}
 
 			document.getElementById("output").innerHTML = `[${parseRec(0,0 , table)}]`.replace(/\[\] ?/g,"");
